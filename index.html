@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>File Upload</h1>
+    <div id = "model">
+      <button id="fetch-whisper-tiny-en-q5_1"   onclick="loadWhisper('tiny-en-q5_1')">tiny.en (Q5_1, 31 MB)</button>
+    </div>
+    <label for="file-upload">Choose a file:</label>
+    <input type="file" id="file-upload">
+    <button id="upload-btn">Transcribe</button>
+  </div>
+  <script src="/upload.js"></script>
+  <script src="/whisper.wasm/helpers.js"></script>
+  <script src="/whisper.wasm/main.js"></script>
+  <script src="/libmain.worker.js"></script>
+  <script src="/ggml-model-whisper-tiny-q5_1.bin" ></script>
+
+<script type = 'text/javascript'>
+
+let dbName    = 'whisper.ggerganov.com';
+let dbVersion = 1
+let indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB
+
+function storeFS(fname, buf) {
+      // write to WASM file using FS_createDataFile
+      // if the file exists, delete it
+      try {
+          Module.FS_unlink(fname);
+      } catch (e) {
+          // ignore
+      }
+
+      Module.FS_createDataFile("/", fname, buf, true, true);
+
+      //model_whisper = fname;
+
+      document.getElementById('model-whisper-status').innerHTML = 'loaded "' + model_whisper + '"!';
+
+      printTextarea('storeFS: stored model: ' + fname + ' size: ' + buf.length);
+
+      document.getElementById('model').innerHTML = 'Model fetched: ' + model_whisper;
+}
+
+function loadFile(event, fname) {
+      var file = event.target.files[0] || null;
+      if (file == null) {
+          return;
+      }
+
+      printTextarea("loadFile: loading model: " + file.name + ", size: " + file.size + " bytes");
+      printTextarea('loadFile: please wait ...');
+
+      var reader = new FileReader();
+      reader.onload = function(event) {
+          var buf = new Uint8Array(reader.result);
+          storeFS(fname, buf);
+      }
+      reader.readAsArrayBuffer(file);
+
+      document.getElementById('fetch-whisper-tiny-en-q5_1'  ).style.display = 'none';
+
+}
+
+    function loadWhisper(model) {
+      let urls = {
+          'tiny-en-q5_1':  './ggml-model-whisper-tiny.en-q5_1.bin',
+      };
+      
+      let sizes = {
+          'tiny-en-q5_1':   31,
+      };
+
+      let url     = urls[model];
+      let dst     = 'whisper.bin';
+      let size_mb = sizes[model];
+
+      model_whisper = model;
+
+      document.getElementById('fetch-whisper-tiny-en-q5_1'  ).style.display = 'none';
+
+      cbProgress = function(p) {
+          let el = document.getElementById('fetch-whisper-progress');
+          el.innerHTML = Math.round(100*p) + '%';
+      };
+
+      cbCancel = function() {
+          var el;
+
+          el = document.getElementById('fetch-whisper-tiny-en-q5_1'  ); if (el) el.style.display = 'inline-block';
+          if (el) el.style.display = 'inline-block';
+          if (el) el.innerHTML = '';
+      };
+
+      loadRemote(url, dst, size_mb, cbProgress, storeFS, cbCancel, printTextarea);
+  }
+  </script>
+
+</body>
+</html> 
